@@ -3,6 +3,7 @@ import { URL } from 'url';
 import path from 'path';
 
 export let resolveHtmlPath: (htmlFileName: string) => string;
+export let getPathOfHtmlFile: () => string;
 
 if (process.env.NODE_ENV === 'development') {
   const port = process.env.PORT || 1212;
@@ -12,6 +13,10 @@ if (process.env.NODE_ENV === 'development') {
     return url.href;
   };
 } else {
+  getPathOfHtmlFile = () => {
+    return `${path.resolve(__dirname, '../renderer/')}`
+  }
+
   resolveHtmlPath = (htmlFileName: string) => {
     return `file://${path.resolve(__dirname, '../renderer/', htmlFileName)}`;
   };

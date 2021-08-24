@@ -14,8 +14,11 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import MenuBuilder from './menu';
-import { resolveHtmlPath } from './util';
+import { getPathOfHtmlFile, resolveHtmlPath } from './util';
+import http from 'http';
+import serveStatic from 'serve-static';
+import finalhandler from 'finalhandler';
+import { readFileSync, writeFileSync } from 'fs';
 
 export default class AppUpdater {
   constructor() {
@@ -36,6 +39,33 @@ ipcMain.on('ipc-example', async (event, arg) => {
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
+
+  let config;
+  try {
+    config = JSON.parse(
+      readFileSync('config.json', 'utf-8')
+    );
+  } catch {
+    config = {
+      port: 80
+    }
+
+    writeFileSync(
+      'config.json',
+      JSON.stringify(config, null, 2)
+    );
+  }
+
+  const serve = serveStatic(getPathOfHtmlFile());
+  const server = http.createServer((req, res) => {
+    try {
+      serve(req, res, finalhandler(req, res));
+    } catch {
+      res.end();
+    }
+  })
+  
+  server.listen(config.port);
 }
 
 const isDevelopment =
@@ -66,24 +96,16 @@ const createWindow = async () => {
     await installExtensions();
   }
 
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
-
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1024,
-    height: 728,
-    icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
+    resizable: false,
+    autoHideMenuBar: true
   });
 
+  mainWindow.setMenu(null);
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
   // @TODO: Use 'ready-to-show' event
@@ -103,9 +125,6 @@ const createWindow = async () => {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
-  const menuBuilder = new MenuBuilder(mainWindow);
-  menuBuilder.buildMenu();
 
   // Open urls in the user's browser
   mainWindow.webContents.on('new-window', (event, url) => {

@@ -7,7 +7,7 @@
     "declarationMap": true,
     "noEmit": true,
     "jsx": "react",
-    "strict": true,
+    //"strict": true,
     "pretty": true,
     "sourceMap": true,
     "baseUrl": "./src",
